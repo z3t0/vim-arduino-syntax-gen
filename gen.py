@@ -104,8 +104,9 @@ def get_syntax_definitions(filename):
 
 def get_arduino_version(arduino_dir):
     try:
-        version_file = os.path.join('/usr/share/arduino/', 'lib', 'version.txt')
-        version = open(version_file).next().rstrip('\r\n')  # first line
+        version_file = os.path.join(arduino_dir, 'lib', 'version.txt')
+        with open(version_file, 'r') as f:
+            version = f.readline()
         print("Arduino IDE Version:", version)
     except:
         version = 'unknown'
