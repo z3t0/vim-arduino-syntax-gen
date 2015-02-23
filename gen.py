@@ -122,9 +122,10 @@ def gen_list(keyword_files, arduino_dir):
                 keyword_files.append(os.path.join(root, file))
 
 def gen_definitions(keyword_files):
+    i = ''
     for idx, val in enumerate(keyword_files):
-        print('\n\n'.join(get_syntax_definitions(keyword_files[idx])))
-        print(idx, val)
+        i += '\n\n'.join(get_syntax_definitions(keyword_files[idx]))
+    return i
 
 def main():
     import datetime
@@ -140,7 +141,7 @@ def main():
     sys.stdout.write(template.substitute({
         'date': datetime.datetime.now().strftime('%d %B %Y'),
         'arduino_version': get_arduino_version(arduino_dir),
-        'rules': '\n\n'.join(gen_definitions(keyword_filesii))),
+        'rules': gen_definitions(keyword_files),
     }))
 
 
