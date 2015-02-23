@@ -125,6 +125,7 @@ def gen_list(keyword_files, arduino_dir):
 def gen_definitions(keyword_files):
     i = ''
     for idx, val in enumerate(keyword_files):
+        i += '\n\n'
         i += '\n\n'.join(get_syntax_definitions(keyword_files[idx]))
     return i
 
