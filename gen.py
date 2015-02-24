@@ -1,151 +1,116 @@
+import datetime
 import os
-import sys
-from collections import defaultdict
-
-mappings = {
-    'HIGH': 'arduinoConstant',
-    'abs': 'arduinoStdFunc',
-    'arduinoFunc': 'analogReference',
-    'setup': 'arduinoMethod',
-    'begin': 'arduinoFunc',
-    'bitSet': 'arduinoFunc',
-    'analogRead': 'arduinoFunc',
-    'Serial': 'arduinoIdentifier',
-    'boolean': 'arduinoType',
-    '+=': None,
-}
-
-cppkeywords = set([
-    'auto', 'const', 'double', 'float', 'int', 'short', 'struct', 'unsigned',
-    'break', 'continue', 'else', 'for', 'long', 'signed', 'switch', 'void',
-    'case', 'default', 'enum', 'goto', 'register', 'sizeof', 'typedef', 'volatile',
-    'char', 'do', 'extern', 'if', 'return', 'static', 'union', 'while',
-    'asm', 'dynamic_cast', 'namespace', 'reinterpret_cast', 'try',
-    'bool', 'explicit', 'new', 'static_cast', 'typeid',
-    'catch', 'false', 'operator', 'template', 'typename',
-    'class', 'friend', 'private', 'this', 'using',
-    'const_cast', 'inline', 'public', 'throw', 'virtual',
-    'delete', 'mutable', 'protected', 'true', 'wchar_t',
-])
+import string
 
 
-def get_keywords(fileobj):
-    heading = ''
-    paragraph = 0
+keyfile = open("test.txt", 'r')
 
-    for rawline in fileobj:
-        line = rawline.rstrip('\r\n')
-        if line.strip() == '':
-            paragraph += 1
-            continue
-        elif line[0] == '#':
-            heading = line[1:].strip()
-        else:
-            try:
-                keyword, classname = line.split('\t')[:2]
-                yield keyword, classname, heading, paragraph
-            except:
-                print(line)
+filename = "Esplora"
+#print('"' + filename + '{{{')
 
 
-def get_sections(fileobj):
-    sections = defaultdict(lambda: [])
+def main():
+    keyword_files_list = []
+    finddir = input("Is '/usr/share/arduino/' the path for your ide? \n"
+            "   Enter Yes or No ... \n")
+    if "Yes" in finddir:
+        arduino_dir = '/usr/share/arduino/'
+    else:
+        arduino_dir = input("Please enter the path for the arduino IDE: \n")
 
-    for keyword, classname, heading, paragraph in get_keywords(fileobj):
-        section_id = '%d-%s' % (paragraph, classname)
-        sections[section_id].append(keyword)
-    return sections
+    gen_list(keyword_files_list, arduino_dir)
+    sorted(keyword_files_list, key=str.lower)
+    template = string.Template(open('template.vim').read())
 
+    arduino_vim = open("arduino.vim", "w")
 
-def get_mapped_keywords(sections):
-    for keywords in sections.values():
-        maps_to = [mappings[keyword] for keyword in keywords if (keyword in mappings)]
-        reduced = filter(lambda x: x not in cppkeywords, keywords)
-
-        if len(maps_to) == 1:
-            if maps_to[0]:
-                yield (reduced, maps_to[0])
-
-
-def get_syntax_groups(sections):
-    syntax_groups = defaultdict(lambda: [])
-
-    for keywords, mapping in get_mapped_keywords(sections):
-        syntax_groups[mapping].extend(keywords)
-
-    return syntax_groups
-
-
-def keyfunction(item):
-    return item[1:]
-
-
-def get_syntax_definitions(filename):
-    sections = get_sections(open(filename))
-    syntax_groups = sorted(get_syntax_groups(sections).items())
-    caseinsensitive_cmp = lambda x, y: cmp(x.lower(), y.lower())
-
-    for name, keywords in syntax_groups:
-        linestart = 'syn keyword %-16s' % name
-        line = linestart
-        lines = ''
-
-        for keyword in sorted(set(keywords), key=keyfunction):
-            if len(line) + len(keyword) > 80:
-                lines += line
-                line = '\n' + linestart
-
-            line += ' ' + keyword
-
-        lines += line
-
-        yield lines
-
-
-def get_arduino_version(arduino_dir):
-    try:
-        version_file = os.path.join(arduino_dir, 'lib', 'version.txt')
-        with open(version_file, 'r') as f:
-            version = f.readline()
-        print("Arduino IDE Version:", version)
-    except:
-        version = 'unknown'
-        print("Version not found", version)
-    return version
-
-
-def gen_list(keyword_files, arduino_dir):
-    for root, dirs, files in os.walk(arduino_dir
+    arduino_vim.write(template.substitute({
+        'date': datetime.datetime.now().strftime('%d %B %Y'),
+        'arduino_version': get_arduino_version(arduino_dir),
+        'rules': get_syntax_definitions(keyword_files_list),
+        }))
+    
+# generate the list of keywords.txt files
+def gen_list(keyword_files_list, arduino_dir):
+    for root, dirs, files in os.walk(arduino_dir # search all directories
     ):
         for file in files:
             if file.endswith("keywords.txt"):
                 # print(os.path.join(root, file))
-                keyword_files.append(os.path.join(root, file))
+                keyword_files_list.append(os.path.join(root, file)) # add file to list if it ends with keywords.txt, that is if thats the file name
 
-def gen_definitions(keyword_files):
+
+# function that returns the arduino IDE version specified
+def get_arduino_version(arduino_dir):
+    try:        # try to get the version number
+        version_file = os.path.join(arduino_dir, 'lib', 'version.txt') # specify path to arduino/lib/version.txt as it holds the version number in the first line
+        with open(version_file, 'r') as f:  # open the version.txt file with read permision
+            version = f.readline()  # set the version as the first line
+    except:    # if you cannot find the version number set it as 'unknown' and print that we do not know it
+        version = 'unknown' # set version as 'unknown' because we cannot find it
+        print("Version not found") # print that we do not know the version
+    return version # give the version number back so that we can include it in the template
+
+
+
+def get_syntax_definitions(keyword_files_list):
+    
     i = ''
-    for idx, val in enumerate(keyword_files):
-        i += '\n\n'
-        i += '\n\n'.join(get_syntax_definitions(keyword_files[idx]))
+    
+    for idx, val in enumerate(keyword_files_list):
+
+        i += (gen_keywords(keyword_files_list[idx]))
+       
     return i
 
-def main():
-    import datetime
-    import string
 
-    keyword_files = []
-    arduino_dir = input("Please enter the full path for the arduino IDE: ")
-    gen_list(keyword_files, arduino_dir)
-    sorted(keyword_files, key=str.lower)
+def gen_keywords(fileobjpath):
+    fileobj = open(fileobjpath, 'r')
+    heading = ''
+    buffer = ''
+    firstheading = True
+    for rawline in fileobj:
+        typedef = ''
+        prefix = 'syn keyword'
+        word = ''
+        keyword = ''
+        line = rawline.rstrip('\r\n')
+        if line.rstrip():
 
-    template = string.Template(open('template.vim').read())
+            if line[0] == '#':
+                if not firstheading:
+                    buffer += '"}}}' + '\n'
+                    buffer += '"' + line + ' ' + '{{{' + '\n'
+                    heading = line
+                if firstheading:
+                    buffer += '"' +  line + ' ' + '{{{' + '\n'
+                    firstheading = False
 
-    sys.stdout.write(template.substitute({
-        'date': datetime.datetime.now().strftime('%d %B %Y'),
-        'arduino_version': get_arduino_version(arduino_dir),
-        'rules': gen_definitions(keyword_files),
-    }))
+            else:
+                try:
+                    keyword, word = line.split('\t')[:2]
+                except:
+                    print(line)
+                if keyword.isupper():
+                    typedef = 'arduinoConstant'
+                elif "datatypes" in heading:
+                    typedef = 'arduinoType'
+                elif "constant" in heading:
+                    typedef = 'arduinoConstant'
+                elif "method" in heading:
+                    typedef = 'arduinoFunc'
+                elif "function" in heading:
+                    typedef = 'arduinoFunc'
+                elif "USB" in heading:
+                    typedef ='arduinoFunc'
+                elif "operator" in heading:
+                    typedef = 'arduinoOperator'
+                buffer += prefix + ' ' + typedef + ' ' + keyword + '\n'
 
+    buffer += '"}}}' + '\n'
+    
+    return buffer
+   
 
 if __name__ == '__main__':
     main()
