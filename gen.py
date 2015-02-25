@@ -2,6 +2,8 @@ import datetime
 import os
 import string
 
+# Rafi Khan Copyright (c) 2015
+
 
 keyfile = open("test.txt", 'r')
 

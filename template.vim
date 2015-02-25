@@ -2,7 +2,8 @@
 " Language:    Arduino
 " Maintainer:  Rafi Khan <zetoslab@gmail.com>
 " Last Change: ${date}
-" License:     VIM license (:help license, replace vim by arduino.vim)
+
+" Rafi Khan Copyright (c) 2015
 
 " Syntax highlighting like in the Arduino IDE 
 " From version: ${arduino_version}
