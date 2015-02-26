@@ -5,10 +5,6 @@ import string
 # Rafi Khan Copyright (c) 2015
 
 
-keyfile = open("test.txt", 'r')
-
-filename = "Esplora"
-#print('"' + filename + '{{{')
 
 
 def main():
@@ -20,6 +16,7 @@ def main():
     else:
         arduino_dir = input("Please enter the path for the arduino IDE: \n")
 
+    print (arduino_dir)
     gen_list(keyword_files_list, arduino_dir)
     sorted(keyword_files_list, key=str.lower)
     template = string.Template(open('template.vim').read())
@@ -61,59 +58,117 @@ def get_syntax_definitions(keyword_files_list):
     
     for idx, val in enumerate(keyword_files_list):
 
-        i += (gen_keywords(keyword_files_list[idx]))
-       
+        if idx == 0:
+            first = True
+        else:
+            first = False
+        i += ('"' + val + '\n')
+        i += (gen_keywords(keyword_files_list[idx], first))
+
     return i
 
 
-def gen_keywords(fileobjpath):
+def gen_keywords(fileobjpath, first):
     fileobj = open(fileobjpath, 'r')
     heading = ''
     buffer = ''
-    firstheading = True
+    constants = []
+    types = []
+    functions = []
+    operators = []
+
+    constantname = 'arduinoConstant'
+    typename = 'arduinoType'
+    functionname = 'arduinoFunc'
+    operatorname = 'arduinoOperator'
+
+
     for rawline in fileobj:
-        typedef = ''
-        prefix = 'syn keyword'
+        if not first:
+            constantname = 'arduinoLibraryConstant'
+            typename = 'arduinoLibraryType'
+            functionname = 'arduinoLibraryFunc'
+            operatorname = 'arduinoLibraryOperator'
+
+
+        prefix = 'syn keyword '
         word = ''
         keyword = ''
         line = rawline.rstrip('\r\n')
         if line.rstrip():
 
             if line[0] == '#':
-                if not firstheading:
-                    buffer += '"}}}' + '\n'
-                    buffer += '"' + line + ' ' + '{{{' + '\n'
-                    heading = line
-                if firstheading:
-                    buffer += '"' +  line + ' ' + '{{{' + '\n'
-                    firstheading = False
-
+                if first:
+                    print (line)
+                if '#######################################' in line:
+                    continue
+                else:
+                    heading = line 
             else:
+
                 try:
                     keyword, word = line.split('\t')[:2]
                 except:
                     print(line)
                 if keyword.isupper():
-                    typedef = 'arduinoConstant'
+                    constants.append(keyword)
                 elif "datatypes" in heading:
-                    typedef = 'arduinoType'
-                elif "constant" in heading:
-                    typedef = 'arduinoConstant'
-                elif "method" in heading:
-                    typedef = 'arduinoFunc'
-                elif "function" in heading:
-                    typedef = 'arduinoFunc'
-                elif "USB" in heading:
-                    typedef ='arduinoFunc'
+                    types.append(keyword)
                 elif "operator" in heading:
-                    typedef = 'arduinoOperator'
-                buffer += prefix + ' ' + typedef + ' ' + keyword + '\n'
+                    operators.append(keyword)    
+                elif "constant" in heading:
+                    constants.append(keyword)
+                elif "method" or "Method" or "Methods" or "methods" in heading:
+                    functions.append(keyword)
+                elif "function" in heading:
+                    continue
+                    functions.append(keyword)
+                elif "USB" in heading:
+                    functions.append(keyword)
+                else:
+                    print(keyword)
+
+
+
+    if len(constants) > 0: 
+        for idx,val in enumerate(constants):
+            if idx % 10 == 0:
+                buffer += '\n' + '\t' + prefix + constantname
+            elif idx == 0:
+                buffer += '\t' + prefix + constantname + constants[idx]
+            buffer += ' ' + constants[idx]
+
+    if len(types) > 0:
+        for idx, val in enumerate(types):
+            if idx % 10 == 0:
+                buffer += '\n' + '\t' + prefix + typename
+            elif idx == 0:
+                buffer += '\t' + '\t' + prefix + typename + types[idx]
+            buffer += ' ' + types[idx]
+    
+    if len(functions) > 0:
+        for idx, val in enumerate(functions):
+            if idx % 10 == 0:
+                buffer += '\n' + '\t' + prefix + functionname
+            elif idx == 0:
+                buffer += '\t' + prefix + functionname + functions[idx]
+            buffer += ' ' + functions[idx]
+
+    if len(operators) > 0:
+        for idx, val in enumerate(operators):
+            if idx % 10 == 0:
+                buffer += '\n' + '\t' + prefix + operatorname
+            elif idx == 0:
+                buffer += '\t' + prefix + operatorname + operators[idx]
+            buffer += ' ' + operators[idx]
+
 
     buffer += '"}}}' + '\n'
-    
+
     return buffer
-   
+
 
 if __name__ == '__main__':
     main()
+
 
